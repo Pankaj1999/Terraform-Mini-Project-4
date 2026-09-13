@@ -19,12 +19,44 @@ resource "azurerm_linux_web_app" "web-app" {
   location            = azurerm_service_plan.service-plan.location
   service_plan_id     = azurerm_service_plan.service-plan.id
 
-  site_config {}
+  app_settings = {
+    SCM_DO_BUILD_DURING_DEPLOYMENT = "1"
+    ENABLE_ORYX_BUILD              = "1"
+
+    APP_VERSION     = "v1.0.0"
+    APP_ENVIRONMENT = "production"
+  }
+
+  site_config {
+    app_command_line = "gunicorn --bind=0.0.0.0:$PORT --timeout 600 app:app"
+
+    application_stack {
+      python_version = "3.11"
+    }
+  }
 }
 
 resource "azurerm_linux_web_app_slot" "staging-slot" {
   name           = "${var.prefix}-staging-slot"
   app_service_id = azurerm_linux_web_app.web-app.id
 
-  site_config {}
+  app_settings = {
+    SCM_DO_BUILD_DURING_DEPLOYMENT = "1"
+    ENABLE_ORYX_BUILD              = "1"
+
+    APP_VERSION     = "v1.0.0-rc"
+    APP_ENVIRONMENT = "staging"
+  }
+
+  site_config {
+    app_command_line = "gunicorn --bind=0.0.0.0:$PORT --timeout 600 app:app"
+
+    application_stack {
+      python_version = "3.11"
+    }
+  }
+}
+
+resource "azurerm_web_app_active_slot" "active-slot" {
+  slot_id = azurerm_linux_web_app_slot.staging-slot.id
 }
